@@ -1,0 +1,163 @@
+/* ── Registration section ────────────────────────────────────── */
+.reg-section {
+  /* uses shared .section styles */
+}
+
+.reg-state-msg {
+  margin-bottom: var(--sp-8);
+  max-width: 42rem;
+}
+
+.reg-closed-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  padding: var(--sp-12);
+  border: 1px solid var(--ink-border);
+  border-radius: 2px;
+  max-width: 42rem;
+}
+
+.reg-closed-text {
+  font-size: var(--text-base);
+  color: var(--paper-dim);
+}
+
+/* ── Form grid ───────────────────────────────────────────────── */
+.reg-form {
+  max-width: 42rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.reg-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-6);
+}
+
+@media (min-width: 600px) {
+  .reg-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Full name and email span full width */
+  .reg-form-grid .field:nth-child(1),
+  .reg-form-grid .field:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+}
+
+.field-optional {
+  color: var(--paper-dim);
+  font-size: var(--text-xs);
+  margin-left: 2px;
+}
+
+/* ── Privacy ─────────────────────────────────────────────────── */
+.reg-privacy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border: 1px solid var(--ink-border);
+  border-radius: 2px;
+  background: var(--ink-mid);
+}
+
+.reg-privacy .checkbox-field.error .checkbox-field input[type="checkbox"] {
+  outline: 2px solid var(--signal);
+}
+
+.reg-privacy-link {
+  color: var(--accent);
+}
+
+.reg-privacy-pending {
+  color: var(--signal-warn);
+}
+
+/* ── Submit row ──────────────────────────────────────────────── */
+.reg-submit-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+}
+
+.reg-submit-note {
+  font-size: var(--text-xs);
+  color: var(--paper-dim);
+}
+
+/* ── Success state ───────────────────────────────────────────── */
+.reg-success {
+  max-width: 42rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.reg-success-icon {
+  font-size: 2rem;
+  color: var(--signal-ok);
+  line-height: 1;
+}
+
+.reg-success-title {
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--paper);
+}
+
+.reg-success-sub {
+  font-size: var(--text-base);
+  color: var(--paper-dim);
+}
+
+.reg-reference-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-6);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--ink-mid));
+}
+
+.reg-reference {
+  font-size: var(--text-2xl);
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  font-weight: 500;
+}
+
+.reg-next-steps {
+  padding: var(--sp-6);
+  border: 1px solid var(--ink-border);
+  border-radius: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.reg-next-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--paper);
+  margin-bottom: var(--sp-1);
+}
+
+.reg-next-steps p {
+  font-size: var(--text-sm);
+  color: var(--paper-dim);
+  line-height: 1.6;
+}
+
+.reg-next-note {
+  color: var(--signal-warn) !important;
+  font-size: var(--text-xs) !important;
+}

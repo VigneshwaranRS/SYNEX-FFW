@@ -1,0 +1,114 @@
+/* ── Nav ───────────────────────────────────────────────────────── */
+.nav-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--ink);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur-mid) var(--ease-out),
+              background var(--dur-mid) var(--ease-out);
+}
+
+.nav-header--scrolled {
+  border-bottom-color: var(--ink-border);
+  background: color-mix(in srgb, var(--ink) 96%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 3.5rem;
+}
+
+.nav-wordmark {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.nav-links {
+  display: none;
+  align-items: center;
+  gap: var(--sp-6);
+}
+
+@media (min-width: 640px) {
+  .nav-links { display: flex; }
+}
+
+.nav-link {
+  font-size: var(--text-sm);
+  color: var(--paper-dim);
+  transition: color var(--dur-fast);
+}
+
+.nav-link:hover {
+  color: var(--paper);
+}
+
+.nav-cta {
+  margin-left: var(--sp-2);
+}
+
+.nav-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  color: var(--paper);
+  border-radius: 2px;
+  transition: background var(--dur-fast);
+}
+
+.nav-toggle:hover {
+  background: var(--ink-mid);
+}
+
+@media (min-width: 640px) {
+  .nav-toggle { display: none; }
+}
+
+/* Mobile menu */
+.nav-mobile {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height var(--dur-mid) var(--ease-out);
+  border-bottom: 1px solid transparent;
+}
+
+.nav-mobile--open {
+  max-height: 20rem;
+  border-bottom-color: var(--ink-border);
+}
+
+.nav-mobile nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: var(--sp-3) var(--grid-gutter) var(--sp-4);
+}
+
+.nav-mobile-link {
+  display: block;
+  padding: var(--sp-3) 0;
+  font-size: var(--text-base);
+  color: var(--paper-dim);
+  border-bottom: 1px solid var(--ink-border);
+  transition: color var(--dur-fast);
+}
+
+.nav-mobile-link:hover {
+  color: var(--paper);
+}
+
+.nav-mobile-cta {
+  margin-top: var(--sp-4);
+  align-self: flex-start;
+}

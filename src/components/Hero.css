@@ -1,0 +1,154 @@
+/* ── Hero ──────────────────────────────────────────────────────── */
+.hero {
+  padding-top: calc(3.5rem + var(--sp-16));
+  padding-bottom: var(--sp-24);
+  border-bottom: 1px solid var(--ink-border);
+  overflow: hidden;
+}
+
+.hero-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-12);
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .hero-layout {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-16);
+  }
+}
+
+/* Org label row */
+.hero-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  color: var(--paper-dim);
+  margin-bottom: var(--sp-4);
+}
+
+.hero-sep {
+  color: var(--ink-border);
+  font-weight: 300;
+}
+
+/* SYNEX wordmark */
+.hero-wordmark {
+  font-size: var(--text-hero);
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  line-height: 0.9;
+  color: var(--paper);
+  margin-bottom: var(--sp-6);
+  /* Deliberate: no gradient, no outlined text — the scale IS the statement */
+}
+
+/* Tagline */
+.hero-tagline {
+  font-size: var(--text-xl);
+  font-weight: 300;
+  color: var(--paper-dim);
+  line-height: 1.4;
+  max-width: 36rem;
+  margin-bottom: var(--sp-8);
+}
+
+.hero-tagline-skel {
+  height: 1.75rem;
+  width: 80%;
+  margin-bottom: var(--sp-8);
+}
+
+/* Fact rows */
+.hero-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-8);
+}
+
+.hero-fact {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-4);
+}
+
+.hero-fact .label {
+  min-width: 3.5rem;
+}
+
+.hero-fact-val {
+  font-size: var(--text-base);
+  color: var(--paper);
+  font-weight: 500;
+}
+
+/* CTA row */
+.hero-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
+}
+
+.hero-closed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.hero-closed-note {
+  font-size: var(--text-sm);
+  color: var(--paper-dim);
+}
+
+/* Live indicator */
+.hero-open-note {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--signal-ok);
+}
+
+.status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-dot--live {
+  background: var(--signal-ok);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--signal-ok) 40%, transparent);
+  animation: pulse-dot 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--signal-ok) 40%, transparent); }
+  50%       { box-shadow: 0 0 0 5px transparent; }
+}
+
+/* Illustration */
+.hero-illustration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+}
+
+.hero-svg {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+}
+
+@media (max-width: 899px) {
+  .hero-illustration {
+    order: -1;
+    max-width: 360px;
+    margin-inline: auto;
+  }
+}
