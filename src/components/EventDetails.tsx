@@ -30,7 +30,9 @@ function DetailRow({
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "";
-  const d = new Date(dateStr + "T00:00:00");
+  // Handle both YYYY-MM-DD and full ISO timestamps from the DB
+  const d = dateStr.includes("T") ? new Date(dateStr) : new Date(dateStr + "T00:00:00");
+  if (isNaN(d.getTime())) return "";
   return d.toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",

@@ -249,18 +249,37 @@ export default function AdminPaymentSettings() {
             The QR image does not contain secrets — it is a public payment display image only.
           </p>
 
+          {/* Always show the static QR image */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)", alignItems: "flex-start" }}>
+            <p className="mono" style={{ fontSize: "var(--text-xs)", color: "var(--accent)" }}>
+              Current payment QR (static asset):
+            </p>
+            <img
+              src="/payment-qr.jpg"
+              alt="Current payment QR code"
+              className="admin-qr-preview"
+              style={{ maxWidth: "280px", maxHeight: "280px" }}
+            />
+            <span className="mono" style={{ fontSize: "var(--text-xs)", color: "var(--paper-dim)" }}>
+              File: /public/payment-qr.jpg · To replace, update this file and redeploy.
+            </span>
+          </div>
+
           {qrPreviewUrl && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)", alignItems: "flex-start" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-3)", alignItems: "flex-start", marginTop: "var(--sp-4)" }}>
+              <p className="mono" style={{ fontSize: "var(--text-xs)", color: "var(--paper-dim)" }}>
+                Uploaded QR (Supabase Storage):
+              </p>
               <img
                 src={qrPreviewUrl}
-                alt="Current payment QR code preview"
+                alt="Uploaded payment QR code preview"
                 className="admin-qr-preview"
               />
               <span className="mono" style={{ fontSize: "var(--text-xs)", color: "var(--paper-dim)" }}>
-                Current QR: {qrPath}
+                Path: {qrPath}
               </span>
               <button className="btn btn-danger btn-sm" onClick={handleRemoveQr}>
-                Remove QR image
+                Remove uploaded QR
               </button>
             </div>
           )}

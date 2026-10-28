@@ -11,6 +11,12 @@ const supabaseAdmin = createClient(
   { auth: { persistSession: false } }
 );
 
+// Team limits
+const MAX_INTERNAL_TEAMS = 20;
+const MAX_EXTERNAL_TEAMS = 70;
+const MAX_TEAM_MEMBERS = 4;
+const SIMATS_EMAIL_SUFFIX = ".simats@saveetha.com";
+
 /**
  * Generates a human-readable, non-sequential, non-guessable reference.
  * Format: SYN-XXXX-XXXX (uppercase alphanumeric, no ambiguous chars)
@@ -28,8 +34,17 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+interface TeamMemberPayload {
+  name: string;
+  email: string;
+  phone: string;
+}
+
 // Server-side validation (mirrors client-side but authoritative)
 function validatePayload(body: Record<string, unknown>): string | null {
+  if (!body.team_name || typeof body.team_name !== "string" || body.team_name.trim().length < 2) {
+    return "Team name is required (minimum 2 characters)";
+  }
   if (!body.full_name || typeof body.full_name !== "string" || body.full_name.trim().length < 2) {
     return "Full name is required (minimum 2 characters)";
   }
@@ -40,6 +55,9 @@ function validatePayload(body: Record<string, unknown>): string | null {
   if (!emailRe.test(body.email.toString().trim())) {
     return "Invalid email address";
   }
+  if (!body.phone || typeof body.phone !== "string" || !/^[6-9]\d{9}$/.test(body.phone.toString().trim())) {
+    return "Valid 10-digit Indian mobile number is required";
+  }
   if (!body.institution || typeof body.institution !== "string" || body.institution.trim().length < 2) {
     return "Institution is required";
   }
@@ -49,6 +67,42 @@ function validatePayload(body: Record<string, unknown>): string | null {
   if (body.consent_given !== true) {
     return "Consent is required";
   }
+
+  // Validate SIMATS email for internal students
+  if (body.affiliation === "internal") {
+    const email = normalizeEmail(body.email as string);
+    if (!email.endsWith(SIMATS_EMAIL_SUFFIX)) {
+      return `SIMATS students must use their college email ending with ${SIMATS_EMAIL_SUFFIX}`;
+    }
+  }
+
+  // Validate team members (now structured objects with name, email, phone)
+  if (body.team_members && Array.isArray(body.team_members)) {
+    const members = body.team_members as TeamMemberPayload[];
+    const totalMembers = 1 + members.length;
+    if (totalMembers > MAX_TEAM_MEMBERS) {
+      return `A team can have at most ${MAX_TEAM_MEMBERS} members (including team lead)`;
+    }
+    for (const member of members) {
+      if (!member.name || typeof member.name !== "string" || member.name.trim().length < 2) {
+        return "Each team member name must be at least 2 characters";
+      }
+      if (!member.email || typeof member.email !== "string" || !emailRe.test(member.email.trim())) {
+        return "Each team member must have a valid email address";
+      }
+      if (!member.phone || typeof member.phone !== "string" || !/^[6-9]\d{9}$/.test(member.phone.trim())) {
+        return "Each team member must have a valid 10-digit Indian mobile number";
+      }
+    }
+  }
+
+  // External teams must provide transaction ID
+  if (body.affiliation === "external") {
+    if (!body.transaction_id || typeof body.transaction_id !== "string" || body.transaction_id.trim().length < 1) {
+      return "Transaction ID is required for external participants";
+    }
+  }
+
   return null;
 }
 
@@ -98,7 +152,44 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Capacity check (atomic via DB constraint is primary; this is an early-exit optimization)
+  const affiliation = body.affiliation as string;
+
+  // ── Affiliation-specific team limit checks ──
+  if (affiliation === "internal") {
+    const { count } = await supabaseAdmin
+      .from("registrations")
+      .select("*", { count: "exact", head: true })
+      .eq("affiliation", "internal")
+      .neq("status", "cancelled");
+
+    if (count !== null && count >= MAX_INTERNAL_TEAMS) {
+      return new Response(
+        JSON.stringify({
+          code: "INTERNAL_LIMIT_REACHED",
+          message: `Internal team slots are full (${MAX_INTERNAL_TEAMS} teams). Contact the organizers for waitlist options.`,
+        }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  } else {
+    const { count } = await supabaseAdmin
+      .from("registrations")
+      .select("*", { count: "exact", head: true })
+      .eq("affiliation", "external")
+      .neq("status", "cancelled");
+
+    if (count !== null && count >= MAX_EXTERNAL_TEAMS) {
+      return new Response(
+        JSON.stringify({
+          code: "EXTERNAL_LIMIT_REACHED",
+          message: `External team slots are full (${MAX_EXTERNAL_TEAMS} teams). Contact the organizers for waitlist options.`,
+        }),
+        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  }
+
+  // Overall capacity check
   if (settings.capacity !== null) {
     const { count } = await supabaseAdmin
       .from("registrations")
@@ -127,11 +218,23 @@ Deno.serve(async (req) => {
     if (!existing) break;
   }
 
+  // Build team_members JSON (now structured objects)
+  const teamMembers: TeamMemberPayload[] = Array.isArray(body.team_members)
+    ? (body.team_members as TeamMemberPayload[])
+        .filter((m) => m.name && m.name.trim())
+        .map((m) => ({
+          name: m.name.trim(),
+          email: normalizeEmail(m.email || ""),
+          phone: (m.phone || "").trim(),
+        }))
+    : [];
+
   // Insert registration
   const { data: reg, error: insertError } = await supabaseAdmin
     .from("registrations")
     .insert({
       reference,
+      team_name: (body.team_name as string).trim(),
       full_name: (body.full_name as string).trim(),
       email: normalizedEmail,
       phone: (body.phone as string)?.trim() || null,
@@ -142,6 +245,10 @@ Deno.serve(async (req) => {
       consent_given: true,
       consent_timestamp: new Date().toISOString(),
       status: "pending",
+      team_members: teamMembers,
+      transaction_id: affiliation === "external" ? (body.transaction_id as string)?.trim() || null : null,
+      payment_screenshot_url: (body.payment_screenshot_url as string) || null,
+      project_pdf_url: (body.project_pdf_url as string) || null,
     })
     .select("id, reference")
     .single();
@@ -174,7 +281,6 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (paymentSettings?.enabled) {
-    const affiliation = body.affiliation as string;
     const needsPayment =
       Array.isArray(paymentSettings.applicable_categories) &&
       paymentSettings.applicable_categories.includes(affiliation);
@@ -183,7 +289,7 @@ Deno.serve(async (req) => {
       await supabaseAdmin.from("payments").insert({
         registration_id: reg.id,
         currency: "INR",
-        status: "pending",
+        status: affiliation === "external" ? "submitted_for_review" : "pending",
       });
     } else {
       await supabaseAdmin.from("payments").insert({

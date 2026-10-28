@@ -27,6 +27,13 @@ export type AffiliationCategory = "internal" | "external";
 
 export type OrganizerRole = "admin" | "checkin_staff";
 
+/** Structured team member with contact details */
+export interface TeamMemberRecord {
+  name: string;
+  email: string;
+  phone: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -34,6 +41,7 @@ export interface Database {
         Row: {
           id: string; // UUID
           reference: string; // public non-sequential reference
+          team_name: string | null;
           full_name: string;
           email: string;
           phone: string | null;
@@ -41,8 +49,12 @@ export interface Database {
           affiliation: AffiliationCategory;
           department: string | null;
           year_of_study: string | null;
+          team_members: TeamMemberRecord[]; // JSONB array of member objects
           consent_given: boolean;
           consent_timestamp: string | null;
+          transaction_id: string | null;
+          payment_screenshot_url: string | null;
+          project_pdf_url: string | null;
           status: RegistrationStatus;
           created_at: string;
           updated_at: string;

@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabaseAdmin as supabase } from "../../lib/supabaseAdmin";
-import type { PaymentStatus, RegistrationStatus } from "../../lib/database.types";
+import type { PaymentStatus, RegistrationStatus, TeamMemberRecord } from "../../lib/database.types";
 import { useAuth } from "../../contexts/AuthContext";
 import "./AdminDashboard.css";
 
 interface RegistrationRow {
   id: string;
   reference: string;
+  team_name: string | null;
   full_name: string;
   email: string;
   phone: string | null;
@@ -14,6 +15,10 @@ interface RegistrationRow {
   affiliation: string;
   department: string | null;
   year_of_study: string | null;
+  team_members: TeamMemberRecord[] | string[];
+  transaction_id: string | null;
+  payment_screenshot_url: string | null;
+  project_pdf_url: string | null;
   status: RegistrationStatus;
   created_at: string;
   payments?: { status: PaymentStatus; amount: number | null }[];
@@ -22,6 +27,8 @@ interface RegistrationRow {
 
 interface Totals {
   total: number;
+  internalTeams: number;
+  externalTeams: number;
   pendingPayment: number;
   verifiedPayment: number;
   checkedIn: number;
@@ -48,7 +55,10 @@ const PAYMENT_CHIP: Record<PaymentStatus, string> = {
 export default function AdminRegistrations() {
   const { user, isAdmin } = useAuth();
   const [registrations, setRegistrations] = useState<RegistrationRow[]>([]);
-  const [totals, setTotals] = useState<Totals>({ total: 0, pendingPayment: 0, verifiedPayment: 0, checkedIn: 0 });
+  const [totals, setTotals] = useState<Totals>({
+    total: 0, internalTeams: 0, externalTeams: 0,
+    pendingPayment: 0, verifiedPayment: 0, checkedIn: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -64,11 +74,12 @@ export default function AdminRegistrations() {
     setLoading(true);
     setError(null);
     try {
-      let query = supabase
+      const query = supabase
         .from("registrations")
         .select(`
-          id, reference, full_name, email, phone, institution, affiliation,
-          department, year_of_study, status, created_at,
+          id, reference, team_name, full_name, email, phone, institution, affiliation,
+          department, year_of_study, team_members, transaction_id, payment_screenshot_url,
+          project_pdf_url, status, created_at,
           payments(status, amount),
           attendance(checked_in_at, checked_in_by)
         `)
@@ -81,6 +92,12 @@ export default function AdminRegistrations() {
       }
 
       const rows = (data as RegistrationRow[]) ?? [];
+      // Ensure team_members is always an array
+      for (const row of rows) {
+        if (!Array.isArray(row.team_members)) {
+          row.team_members = [];
+        }
+      }
       setRegistrations(rows);
 
       // Compute totals
@@ -91,7 +108,16 @@ export default function AdminRegistrations() {
       const verifiedPayment = rows.filter((r) =>
         r.payments?.some((p) => p.status === "verified")
       ).length;
-      setTotals({ total: rows.length, pendingPayment, verifiedPayment, checkedIn });
+      const internalTeams = rows.filter((r) => r.affiliation === "internal").length;
+      const externalTeams = rows.filter((r) => r.affiliation === "external").length;
+      setTotals({
+        total: rows.length,
+        internalTeams,
+        externalTeams,
+        pendingPayment,
+        verifiedPayment,
+        checkedIn,
+      });
     } finally {
       setLoading(false);
     }
@@ -108,7 +134,8 @@ export default function AdminRegistrations() {
       !search ||
       r.full_name.toLowerCase().includes(searchLower) ||
       r.email.toLowerCase().includes(searchLower) ||
-      r.reference.toLowerCase().includes(searchLower);
+      r.reference.toLowerCase().includes(searchLower) ||
+      (r.team_name ?? "").toLowerCase().includes(searchLower);
 
     const matchAffil = filterAffiliation === "all" || r.affiliation === filterAffiliation;
 
@@ -145,7 +172,7 @@ export default function AdminRegistrations() {
           setActionMessage({ type: "error", text: "Check-in failed. Please try again." });
         }
       } else {
-        setActionMessage({ type: "success", text: `${reg.full_name} checked in successfully.` });
+        setActionMessage({ type: "success", text: `${reg.team_name || reg.full_name} checked in successfully.` });
         await fetchRegistrations();
         setSelected(null);
       }
@@ -170,7 +197,7 @@ export default function AdminRegistrations() {
     }
 
     const confirmed = window.confirm(
-      `Confirm payment verification for ${reg.full_name} (${reg.reference})?\n\n` +
+      `Confirm payment verification for ${reg.team_name || reg.full_name} (${reg.reference})?\n\n` +
       "Only do this after checking payment evidence through the approved process. " +
       "This action is logged with your identity."
     );
@@ -191,9 +218,46 @@ export default function AdminRegistrations() {
       if (payErr) {
         setActionMessage({ type: "error", text: "Payment verification failed. Please try again." });
       } else {
-        setActionMessage({ type: "success", text: `Payment verified for ${reg.full_name}.` });
+        setActionMessage({ type: "success", text: `Payment verified for ${reg.team_name || reg.full_name}.` });
         await fetchRegistrations();
         setSelected(null);
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleDeleteTeam(reg: RegistrationRow) {
+    if (!isAdmin) {
+      setActionMessage({ type: "error", text: "Only admins can delete teams." });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `⚠️ Delete team "${reg.team_name || reg.full_name}" (${reg.reference})?\n\n` +
+      "This will permanently remove the team registration, including:\n" +
+      "• All payment records\n" +
+      "• All attendance records\n" +
+      "• Uploaded files\n\n" +
+      "This action cannot be undone."
+    );
+    if (!confirmed) return;
+
+    setActionLoading(`delete-${reg.id}`);
+    setActionMessage(null);
+    try {
+      // Delete the registration (cascades to payments, attendance via FK)
+      const { error: delErr } = await supabase
+        .from("registrations")
+        .delete()
+        .eq("id", reg.id);
+
+      if (delErr) {
+        setActionMessage({ type: "error", text: `Failed to delete team: ${delErr.message}` });
+      } else {
+        setActionMessage({ type: "success", text: `Team "${reg.team_name || reg.full_name}" deleted successfully.` });
+        setSelected(null);
+        await fetchRegistrations();
       }
     } finally {
       setActionLoading(null);
@@ -207,7 +271,7 @@ export default function AdminRegistrations() {
       const { data, error: csvErr } = await supabase
         .from("registrations")
         .select(
-          "reference, full_name, email, institution, affiliation, department, year_of_study, status, created_at"
+          "reference, team_name, full_name, email, phone, institution, affiliation, department, year_of_study, team_members, transaction_id, payment_screenshot_url, project_pdf_url, status, created_at"
         )
         .order("created_at", { ascending: true });
 
@@ -217,20 +281,36 @@ export default function AdminRegistrations() {
       }
 
       const headers = [
-        "Reference", "Full Name", "Email", "Institution",
-        "Affiliation", "Department", "Year", "Status", "Registered At"
+        "Reference", "Team Name", "Team Lead", "Email", "Phone", "Institution",
+        "Affiliation", "Department", "Year", "Team Members", "Transaction ID",
+        "Payment Screenshot", "Project PDF", "Status", "Registered At"
       ];
-      const rows = data.map((r) => [
-        r.reference,
-        r.full_name,
-        r.email,
-        r.institution,
-        r.affiliation,
-        r.department ?? "",
-        r.year_of_study ?? "",
-        r.status,
-        new Date(r.created_at).toLocaleString("en-IN"),
-      ]);
+      const rows = data.map((r: Record<string, unknown>) => {
+        let membersStr = "";
+        if (Array.isArray(r.team_members)) {
+          membersStr = (r.team_members as Array<Record<string, string> | string>).map((m) => {
+            if (typeof m === "string") return m;
+            return `${m.name} (${m.email}, ${m.phone})`;
+          }).join("; ");
+        }
+        return [
+          r.reference as string,
+          (r.team_name as string) ?? "",
+          r.full_name as string,
+          r.email as string,
+          (r.phone as string) ?? "",
+          r.institution as string,
+          r.affiliation as string,
+          (r.department as string) ?? "",
+          (r.year_of_study as string) ?? "",
+          membersStr,
+          (r.transaction_id as string) ?? "",
+          (r.payment_screenshot_url as string) ?? "",
+          (r.project_pdf_url as string) ?? "",
+          r.status as string,
+          new Date(r.created_at as string).toLocaleString("en-IN"),
+        ];
+      });
 
       const csv = [headers, ...rows]
         .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
@@ -248,14 +328,34 @@ export default function AdminRegistrations() {
     }
   }
 
+  /** Helper to display a team member (handles both old string[] and new object[] format) */
+  function renderTeamMember(member: TeamMemberRecord | string, idx: number) {
+    if (typeof member === "string") {
+      return (
+        <span key={idx} className="chip chip--draft">
+          {member}
+        </span>
+      );
+    }
+    return (
+      <div key={idx} className="admin-member-card">
+        <span className="admin-member-name">{member.name}</span>
+        <span className="admin-member-meta">{member.email}</span>
+        <span className="admin-member-meta">{member.phone}</span>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <h2 className="admin-section-title">Registrations</h2>
+      <h2 className="admin-section-title">Teams & Registrations</h2>
 
       {/* Summary cards */}
       <div className="admin-summary-cards">
         {[
-          { label: "Total", value: totals.total },
+          { label: "Total teams", value: totals.total },
+          { label: "Internal (SIMATS)", value: `${totals.internalTeams}/20` },
+          { label: "External", value: `${totals.externalTeams}/70` },
           { label: "Pending payment", value: totals.pendingPayment, accent: totals.pendingPayment > 0 },
           { label: "Verified", value: totals.verifiedPayment, accent: false },
           { label: "Checked in", value: totals.checkedIn },
@@ -290,11 +390,18 @@ export default function AdminRegistrations() {
 
       {/* Selected participant detail */}
       {selected && (
-        <div className="admin-detail-panel" role="region" aria-label="Participant detail">
+        <div className="admin-detail-panel" role="region" aria-label="Team detail">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <h3 style={{ fontSize: "var(--text-lg)", fontWeight: 700, color: "var(--paper)" }}>
-              {selected.full_name}
-            </h3>
+            <div>
+              <h3 style={{ fontSize: "var(--text-lg)", fontWeight: 700, color: "var(--paper)" }}>
+                {selected.team_name || selected.full_name}
+              </h3>
+              {selected.team_name && (
+                <p style={{ fontSize: "var(--text-sm)", color: "var(--paper-dim)", marginTop: "var(--sp-1)" }}>
+                  Lead: {selected.full_name}
+                </p>
+              )}
+            </div>
             <button
               className="btn btn-ghost btn-sm"
               onClick={() => setSelected(null)}
@@ -307,6 +414,8 @@ export default function AdminRegistrations() {
           <div className="admin-detail-grid">
             {[
               { label: "Reference", value: selected.reference },
+              { label: "Team name", value: selected.team_name ?? "—" },
+              { label: "Team lead", value: selected.full_name },
               { label: "Email", value: selected.email },
               { label: "Phone", value: selected.phone ?? "—" },
               { label: "Institution", value: selected.institution },
@@ -334,6 +443,94 @@ export default function AdminRegistrations() {
               </div>
             ))}
           </div>
+
+          {/* External-specific: transaction ID and screenshot */}
+          {selected.affiliation === "external" && (
+            <div style={{ marginTop: "var(--sp-2)", display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
+              <div className="admin-detail-item">
+                <label style={{
+                  fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)",
+                  color: "var(--paper-dim)", letterSpacing: "0.04em", display: "block",
+                  marginBottom: "var(--sp-1)"
+                }}>
+                  Transaction ID
+                </label>
+                <span style={{
+                  fontSize: "var(--text-sm)", color: "var(--accent)", fontFamily: "var(--font-mono)",
+                  fontWeight: 600, letterSpacing: "0.02em"
+                }}>
+                  {selected.transaction_id || "—"}
+                </span>
+              </div>
+              {selected.payment_screenshot_url && (
+                <div>
+                  <label style={{
+                    fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)",
+                    color: "var(--paper-dim)", letterSpacing: "0.04em", display: "block",
+                    marginBottom: "var(--sp-2)"
+                  }}>
+                    Payment screenshot
+                  </label>
+                  <a
+                    href={selected.payment_screenshot_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-secondary btn-sm"
+                    style={{ display: "inline-flex", alignItems: "center", gap: "var(--sp-2)" }}
+                  >
+                    📸 View screenshot
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Internal-specific: project PDF */}
+          {selected.affiliation === "internal" && selected.project_pdf_url && (
+            <div style={{ marginTop: "var(--sp-2)" }}>
+              <label style={{
+                fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)",
+                color: "var(--paper-dim)", letterSpacing: "0.04em", display: "block",
+                marginBottom: "var(--sp-2)"
+              }}>
+                Project PDF
+              </label>
+              <a
+                href={selected.project_pdf_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-secondary btn-sm"
+                style={{ display: "inline-flex", alignItems: "center", gap: "var(--sp-2)" }}
+              >
+                📄 View project PDF
+              </a>
+            </div>
+          )}
+
+          {/* Team members display */}
+          {selected.team_members.length > 0 && (
+            <div style={{ marginTop: "var(--sp-2)" }}>
+              <label style={{
+                fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)",
+                color: "var(--paper-dim)", letterSpacing: "0.04em", display: "block",
+                marginBottom: "var(--sp-2)"
+              }}>
+                Team members ({1 + selected.team_members.length} total)
+              </label>
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-2)" }}>
+                {/* Lead */}
+                <div className="admin-member-card" style={{ borderColor: "color-mix(in srgb, var(--accent) 30%, transparent)" }}>
+                  <span className="admin-member-name" style={{ color: "var(--accent)" }}>
+                    {selected.full_name} (Lead)
+                  </span>
+                  <span className="admin-member-meta">{selected.email}</span>
+                  <span className="admin-member-meta">{selected.phone ?? "—"}</span>
+                </div>
+                {/* Other members */}
+                {selected.team_members.map((member, i) => renderTeamMember(member, i))}
+              </div>
+            </div>
+          )}
 
           <div className="admin-action-row">
             {/* Check-in */}
@@ -365,6 +562,25 @@ export default function AdminRegistrations() {
                 ) : "Verify payment"}
               </button>
             )}
+
+            {/* Delete team — admin only */}
+            {isAdmin && (
+              <button
+                id={`btn-delete-${selected.id}`}
+                className="btn btn-sm"
+                style={{
+                  background: "color-mix(in srgb, var(--signal) 12%, var(--ink-mid))",
+                  color: "var(--signal)",
+                  border: "1px solid color-mix(in srgb, var(--signal) 30%, transparent)",
+                }}
+                disabled={!!actionLoading}
+                onClick={() => handleDeleteTeam(selected)}
+              >
+                {actionLoading === `delete-${selected.id}` ? (
+                  <><span className="spinner" aria-hidden="true" /> Deleting…</>
+                ) : "🗑 Delete team"}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -377,7 +593,7 @@ export default function AdminRegistrations() {
             id="admin-search"
             type="search"
             className="input"
-            placeholder="Search by name, email, or reference…"
+            placeholder="Search by team, name, email, or reference…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -459,8 +675,9 @@ export default function AdminRegistrations() {
             <thead>
               <tr>
                 <th>Reference</th>
-                <th>Name</th>
-                <th>Email</th>
+                <th>Team</th>
+                <th>Lead</th>
+                <th>Members</th>
                 <th>Affiliation</th>
                 <th>Payment</th>
                 <th>Check-in</th>
@@ -472,11 +689,17 @@ export default function AdminRegistrations() {
               {filtered.map((reg) => {
                 const payStatus = reg.payments?.[0]?.status ?? null;
                 const isCheckedIn = (reg.attendance?.length ?? 0) > 0;
+                const memberCount = 1 + (reg.team_members?.length ?? 0);
                 return (
                   <tr key={reg.id}>
                     <td className="mono" style={{ fontSize: "var(--text-xs)" }}>{reg.reference}</td>
-                    <td style={{ fontWeight: 500 }}>{reg.full_name}</td>
-                    <td style={{ fontSize: "var(--text-sm)", color: "var(--paper-dim)" }}>{reg.email}</td>
+                    <td style={{ fontWeight: 500 }}>{reg.team_name || "—"}</td>
+                    <td style={{ fontSize: "var(--text-sm)", color: "var(--paper-dim)" }}>{reg.full_name}</td>
+                    <td>
+                      <span className="chip chip--draft" style={{ fontSize: "var(--text-xs)" }}>
+                        {memberCount} {memberCount === 1 ? "member" : "members"}
+                      </span>
+                    </td>
                     <td>
                       <span className="chip chip--draft" style={{ textTransform: "capitalize" }}>
                         {reg.affiliation}
@@ -502,16 +725,30 @@ export default function AdminRegistrations() {
                       {new Date(reg.created_at).toLocaleDateString("en-IN")}
                     </td>
                     <td>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => {
-                          setSelected(reg);
-                          setActionMessage(null);
-                        }}
-                        aria-label={`View details for ${reg.full_name}`}
-                      >
-                        View
-                      </button>
+                      <div style={{ display: "flex", gap: "var(--sp-2)", alignItems: "center" }}>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => {
+                            setSelected(reg);
+                            setActionMessage(null);
+                          }}
+                          aria-label={`View details for ${reg.team_name || reg.full_name}`}
+                        >
+                          View
+                        </button>
+                        {isAdmin && (
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            style={{ color: "var(--signal)", fontSize: "var(--text-xs)" }}
+                            onClick={() => handleDeleteTeam(reg)}
+                            disabled={!!actionLoading}
+                            aria-label={`Delete ${reg.team_name || reg.full_name}`}
+                            title="Delete team"
+                          >
+                            🗑
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -522,7 +759,7 @@ export default function AdminRegistrations() {
       </div>
 
       <p className="mono" style={{ fontSize: "var(--text-xs)", color: "var(--paper-dim)", marginTop: "var(--sp-3)" }}>
-        Showing {filtered.length} of {registrations.length} registrations
+        Showing {filtered.length} of {registrations.length} teams
       </p>
     </div>
   );

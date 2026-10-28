@@ -24,6 +24,55 @@
   color: var(--paper-dim);
 }
 
+.section-subtitle {
+  font-size: var(--text-base);
+  color: var(--paper-dim);
+  margin-top: var(--sp-2);
+  max-width: 42rem;
+  line-height: 1.6;
+}
+
+.section-subtitle strong {
+  color: var(--accent);
+}
+
+/* ── Team slot indicators ────────────────────────────────────── */
+.reg-slots-info {
+  display: flex;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-8);
+  max-width: 42rem;
+}
+
+.reg-slot-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--ink-border);
+  border-radius: 2px;
+  background: var(--ink-mid);
+}
+
+.reg-slot-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--paper-dim);
+  letter-spacing: 0.04em;
+}
+
+.reg-slot-count {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+
+.reg-slot-full {
+  color: var(--signal) !important;
+}
+
 /* ── Form grid ───────────────────────────────────────────────── */
 .reg-form {
   max-width: 42rem;
@@ -32,10 +81,37 @@
   gap: var(--sp-6);
 }
 
+.reg-form-section {
+  border: 1px solid var(--ink-border);
+  border-radius: 2px;
+  padding: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.reg-form-section-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--paper);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--ink-border);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.reg-form-section-hint {
+  font-size: var(--text-sm);
+  color: var(--paper-dim);
+  line-height: 1.5;
+  margin-top: calc(-1 * var(--sp-2));
+}
+
 .reg-form-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--sp-6);
+  gap: var(--sp-5);
 }
 
 @media (min-width: 600px) {
@@ -43,9 +119,7 @@
     grid-template-columns: 1fr 1fr;
   }
 
-  /* Full name and email span full width */
-  .reg-form-grid .field:nth-child(1),
-  .reg-form-grid .field:nth-child(2) {
+  .field--full {
     grid-column: 1 / -1;
   }
 }
@@ -54,6 +128,201 @@
   color: var(--paper-dim);
   font-size: var(--text-xs);
   margin-left: 2px;
+}
+
+/* ── Team members ────────────────────────────────────────────── */
+.reg-member-count {
+  font-size: var(--text-xs);
+  color: var(--paper-dim);
+  font-weight: 400;
+}
+
+.reg-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.reg-member-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.reg-member-lead {
+  padding: var(--sp-3) var(--sp-4);
+  background: color-mix(in srgb, var(--accent) 6%, var(--ink-mid));
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  border-radius: 2px;
+}
+
+.reg-member-badge {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--ink));
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  flex-shrink: 0;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.reg-member-name {
+  font-size: var(--text-sm);
+  color: var(--paper);
+  font-weight: 500;
+}
+
+.reg-member-detail {
+  font-size: var(--text-xs);
+  color: var(--paper-dim);
+  font-family: var(--font-mono);
+}
+
+.reg-member-input {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.reg-member-remove {
+  color: var(--signal) !important;
+  flex-shrink: 0;
+  font-size: var(--text-lg);
+}
+
+.reg-member-error {
+  width: 100%;
+  padding-left: calc(var(--sp-2) + var(--sp-3) + 2rem); /* offset past badge */
+}
+
+.reg-add-member {
+  align-self: flex-start;
+  color: var(--accent) !important;
+  border: 1px dashed var(--ink-border) !important;
+  padding: var(--sp-2) var(--sp-4) !important;
+  margin-top: var(--sp-1);
+}
+
+.reg-add-member:hover {
+  border-color: var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 6%, var(--ink-mid)) !important;
+}
+
+/* ── Team member cards (structured with name/email/phone) ───── */
+.reg-member-card {
+  border: 1px solid var(--ink-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.reg-member-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--ink-mid);
+  border-bottom: 1px solid var(--ink-border);
+}
+
+.reg-member-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+}
+
+@media (min-width: 600px) {
+  .reg-member-fields {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+/* ── File upload area ────────────────────────────────────────── */
+.reg-upload-area {
+  border: 2px dashed var(--ink-border);
+  border-radius: 2px;
+  padding: var(--sp-6);
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 7rem;
+}
+
+.reg-upload-area:hover,
+.reg-upload-area:focus-within {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 4%, var(--ink));
+}
+
+.reg-upload-area--error {
+  border-color: var(--signal) !important;
+}
+
+.reg-upload-area--has-file {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--ink-mid));
+}
+
+.reg-upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  text-align: center;
+}
+
+.reg-upload-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.reg-upload-text {
+  font-size: var(--text-sm);
+  color: var(--paper-dim);
+  font-weight: 500;
+}
+
+.reg-upload-hint {
+  font-size: var(--text-xs);
+  color: var(--paper-dim);
+  font-family: var(--font-mono);
+  opacity: 0.7;
+}
+
+.reg-upload-file-info {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.reg-upload-file-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.reg-upload-file-name {
+  font-size: var(--text-sm);
+  color: var(--accent);
+  font-weight: 500;
+  word-break: break-all;
+  flex: 1;
+  min-width: 0;
+}
+
+.reg-upload-file-size {
+  font-size: var(--text-xs);
+  color: var(--paper-dim);
+  font-family: var(--font-mono);
+  flex-shrink: 0;
 }
 
 /* ── Privacy ─────────────────────────────────────────────────── */
@@ -160,4 +429,69 @@
 .reg-next-note {
   color: var(--signal-warn) !important;
   font-size: var(--text-xs) !important;
+}
+
+.reg-info-note {
+  color: var(--accent) !important;
+  font-size: var(--text-xs) !important;
+  font-family: var(--font-mono);
+}
+
+/* ── QR code display ─────────────────────────────────────────── */
+.reg-qr-display {
+  display: flex;
+  justify-content: center;
+  padding: var(--sp-4) 0;
+}
+
+.reg-qr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-6);
+  background: #ffffff;
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  max-width: 320px;
+  width: 100%;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.reg-qr-image {
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.reg-qr-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.reg-qr-upi-label {
+  font-size: var(--text-xs);
+  color: #666;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.reg-qr-upi-id {
+  font-size: var(--text-base);
+  color: #1a1a1a;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  user-select: all;
+}
+
+.reg-qr-hint {
+  font-size: var(--text-xs);
+  color: #888;
+  text-align: center;
+  line-height: 1.4;
 }

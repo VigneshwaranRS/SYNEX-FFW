@@ -1,8 +1,21 @@
 import { z } from "zod";
 
-// ─── Registration form schema ─────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
+export const MAX_TEAM_MEMBERS = 4;
+export const MIN_TEAM_MEMBERS = 1;
+export const MAX_INTERNAL_TEAMS = 20;
+export const MAX_EXTERNAL_TEAMS = 50;
+export const SIMATS_EMAIL_SUFFIX = ".simats@saveetha.com";
+
+// ─── Registration form schema (team-based) ────────────────────────────────────
 
 export const registrationSchema = z.object({
+  team_name: z
+    .string()
+    .trim()
+    .min(2, "Team name must be at least 2 characters")
+    .max(100, "Team name must be under 100 characters"),
+
   full_name: z
     .string()
     .trim()
@@ -50,7 +63,24 @@ export const registrationSchema = z.object({
   consent_given: z.literal(true, {
     message: "You must agree to the privacy notice to register",
   }),
-});
+
+  team_members: z
+    .array(z.string().trim().min(2, "Member name is required (minimum 2 characters)").max(100))
+    .max(MAX_TEAM_MEMBERS - 1, `You can add at most ${MAX_TEAM_MEMBERS - 1} additional members`)
+    .default([]),
+}).refine(
+  (data) => {
+    // For internal students, validate SIMATS email
+    if (data.affiliation === "internal") {
+      return data.email.endsWith(SIMATS_EMAIL_SUFFIX);
+    }
+    return true;
+  },
+  {
+    message: `SIMATS students must use their college email (e.g. 192521307.simats@saveetha.com)`,
+    path: ["email"],
+  }
+);
 
 export type RegistrationFormData = z.infer<typeof registrationSchema>;
 

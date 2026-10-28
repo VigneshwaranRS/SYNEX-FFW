@@ -26,7 +26,9 @@ function toFormData(row: DbRow): Partial<EventSettingsFormData> {
     tagline: row.tagline ?? "",
     short_description: row.short_description ?? "",
     registration_open: row.registration_open ?? false,
-    registration_deadline: row.registration_deadline ?? "",
+    registration_deadline: row.registration_deadline
+      ? row.registration_deadline.substring(0, 10)  // Extract YYYY-MM-DD from TIMESTAMPTZ
+      : "",
     capacity: row.capacity ?? undefined,
     waitlist_enabled: row.waitlist_enabled ?? false,
     eligibility_rules: row.eligibility_rules ?? "",
@@ -74,6 +76,9 @@ export default function AdminEventSettings() {
   const [loading, setLoading] = useState(true);
   const [auditLog, setAuditLog] = useState<DbRow[]>([]);
   const [showWarning, setShowWarning] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -498,6 +503,102 @@ export default function AdminEventSettings() {
           </div>
         </div>
       )}
+
+      {/* ── Danger zone ─────────────────────────────────────────────── */}
+      <div className="admin-danger-zone" style={{ marginTop: "var(--sp-12)" }}>
+        <h3 className="admin-danger-zone-title">Danger zone</h3>
+        <div className="admin-danger-zone-content">
+          <div className="admin-danger-zone-info">
+            <p className="admin-danger-zone-label">Delete this event and all associated data</p>
+            <p className="admin-danger-zone-desc">
+              This will permanently delete the event settings, <strong>all registrations</strong>,
+              payment records, attendance records, sessions, FAQs, and audit history.
+              This action <strong>cannot be undone</strong> and will free up database storage.
+            </p>
+          </div>
+
+          {!showDeleteConfirm ? (
+            <button
+              id="btn-delete-event"
+              type="button"
+              className="btn btn-danger"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={deleting}
+            >
+              Delete event
+            </button>
+          ) : (
+            <div className="admin-delete-confirm">
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--signal)", marginBottom: "var(--sp-3)" }}>
+                Type <strong>DELETE</strong> to confirm:
+              </p>
+              <input
+                type="text"
+                className="input"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="Type DELETE"
+                disabled={deleting}
+                style={{ maxWidth: "16rem", marginBottom: "var(--sp-3)" }}
+              />
+              <div style={{ display: "flex", gap: "var(--sp-3)" }}>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  disabled={deleteConfirmText !== "DELETE" || deleting}
+                  onClick={async () => {
+                    if (deleteConfirmText !== "DELETE") return;
+                    setDeleting(true);
+                    try {
+                      // Cascade delete: attendance → payments → registrations → sessions → faqs → audit → settings
+                      // attendance and payments reference registrations, so delete them first
+                      await supabase.from("attendance").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                      await supabase.from("payments").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                      await supabase.from("registrations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                      await supabase.from("event_sessions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                      await supabase.from("event_faqs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                      await supabase.from("event_settings_audit").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+                      await supabase.from("payment_settings").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+                      if (settingsId) {
+                        await supabase.from("event_settings").delete().eq("id", settingsId);
+                      }
+
+                      // Reset local state
+                      setSettingsId(null);
+                      setIsPublished(false);
+                      setForm({ ...EMPTY_FORM });
+                      setAuditLog([]);
+                      setShowDeleteConfirm(false);
+                      setDeleteConfirmText("");
+                      setSaveStatus({ type: "success", message: "Event and all data deleted successfully." });
+                    } catch (e) {
+                      console.error("Delete failed:", e);
+                      setSaveStatus({ type: "error", message: "Delete failed. Please try again." });
+                    } finally {
+                      setDeleting(false);
+                    }
+                  }}
+                >
+                  {deleting ? (
+                    <><span className="spinner" aria-hidden="true" /> Deleting…</>
+                  ) : (
+                    "Permanently delete everything"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); }}
+                  disabled={deleting}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

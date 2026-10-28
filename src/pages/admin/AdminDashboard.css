@@ -350,3 +350,80 @@
   border-radius: 2px;
   background: white;
 }
+
+/* Danger zone */
+.admin-danger-zone {
+  border: 1px solid color-mix(in srgb, var(--signal) 40%, transparent);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.admin-danger-zone-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--signal);
+  padding: var(--sp-4) var(--sp-6);
+  background: color-mix(in srgb, var(--signal) 8%, var(--ink));
+  border-bottom: 1px solid color-mix(in srgb, var(--signal) 20%, transparent);
+}
+
+.admin-danger-zone-content {
+  padding: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.admin-danger-zone-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.admin-danger-zone-label {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--paper);
+}
+
+.admin-danger-zone-desc {
+  font-size: var(--text-sm);
+  color: var(--paper-dim);
+  line-height: 1.6;
+}
+
+.admin-danger-zone-desc strong {
+  color: var(--signal);
+}
+
+.admin-delete-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+/* ── Admin team member cards ──────────────────────────────────── */
+.admin-member-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--ink-border);
+  border-radius: 2px;
+  background: var(--ink);
+  flex-wrap: wrap;
+}
+
+.admin-member-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--paper);
+  min-width: 8rem;
+}
+
+.admin-member-meta {
+  font-size: var(--text-xs);
+  color: var(--paper-dim);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
